@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
-import { FindOptionsWhere, Repository, FindManyOptions, FindOneOptions } from 'typeorm';
+import { FindOptionsWhere, Repository, FindManyOptions, FindOneOptions, ObjectLiteral } from 'typeorm';
 
-export abstract class BaseRepository<T> {
+export abstract class BaseRepository<T extends ObjectLiteral> {
   protected abstract readonly logger: Logger;
   
   constructor(protected readonly repository: Repository<T>) {}
@@ -50,7 +50,8 @@ export abstract class BaseRepository<T> {
   async create(data: Partial<T>): Promise<T> {
     try {
       const entity = this.repository.create(data as any);
-      return await this.repository.save(entity);
+      const savedEntity = await this.repository.save(entity);
+      return savedEntity as unknown as T;
     } catch (error) {
       this.logger.error(`Error creating entity: ${error.message}`);
       throw error;
@@ -76,7 +77,7 @@ export abstract class BaseRepository<T> {
   async delete(id: string): Promise<boolean> {
     try {
       const result = await this.repository.delete(id);
-      return result.affected > 0;
+      return result.affected !== undefined && result.affected !== null && result.affected > 0;
     } catch (error) {
       this.logger.error(`Error deleting entity ${id}: ${error.message}`);
       throw error;

@@ -64,6 +64,7 @@ export class UserController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async getUserRoles(@Param('id') id: string) {
     const user = await this.userService.getUserWithRoles(id);
-    return user.roles;
+    const roles = user.userRoles?.map(userRole => userRole.role) || [];
+    return roles;
   }
 } 

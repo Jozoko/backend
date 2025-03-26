@@ -77,14 +77,17 @@ export class ProfileService {
    */
   private async createDefaultPreferences(userId: string): Promise<UserPreferences> {
     try {
+      // Create with entity properties defined in the entity
       const preferences = this.userPreferencesRepository.create({
         userId,
-        language: 'en',
         theme: 'light',
-        //notifications: true,
-        settings: {},
+        language: 'en',
+        dashboardLayout: {},
+        notifications: {},
+        modulePreferences: {},
       });
       
+      // Save to database
       const savedPreferences = await this.userPreferencesRepository.save(preferences);
       
       // Log creation

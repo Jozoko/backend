@@ -3,11 +3,14 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Post,
   Put,
   Request,
   UseGuards,
+  HttpStatus,
+  HttpException,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from '../services/auth.service';
@@ -20,12 +23,19 @@ import {
   AuthResponseDto,
   CreateLdapConfigurationDto,
   LoginDto,
+  TokenRefreshDto,
+  TokenRefreshResponseDto,
   UpdateLdapConfigurationDto,
 } from '../dto';
+import { RateLimit } from '../../common/decorators/rate-limit.decorator';
+import { UseGuards as UseCustomGuards } from '../../common/decorators/use-guards.decorator';
+import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private authService: AuthService,
     private ldapService: LdapService,
@@ -33,6 +43,8 @@ export class AuthController {
 
   @Public()
   @UseGuards(LocalAuthGuard)
+  @UseCustomGuards(RateLimitGuard)
+  @RateLimit(5, 60) // 5 attempts per minute
   @Post('login')
   @ApiOperation({ summary: 'Authenticate user with local strategy and get JWT token' })
   @ApiResponse({ 
@@ -41,12 +53,29 @@ export class AuthController {
     type: AuthResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   async login(@Body() loginDto: LoginDto, @Request() req): Promise<AuthResponseDto> {
-    return this.authService.generateAuthResponse(req.user);
+    try {
+      this.logger.debug(`Login attempt for user: ${loginDto.username}`);
+      return this.authService.generateAuthResponse(req.user);
+    } catch (error) {
+      this.logger.error(`Login failed: ${error.message}`);
+      throw new HttpException(
+        { 
+          status: HttpStatus.UNAUTHORIZED, 
+          error: 'Authentication failed', 
+          message: 'Invalid username or password' 
+        }, 
+        HttpStatus.UNAUTHORIZED
+      );
+    }
   }
 
   @Public()
   @UseGuards(LdapAuthGuard)
+  @UseCustomGuards(RateLimitGuard)
+  @RateLimit(5, 60) // 5 attempts per minute
   @Post('login/ldap')
   @ApiOperation({ summary: 'Authenticate user with LDAP and get JWT token' })
   @ApiResponse({ 
@@ -55,8 +84,36 @@ export class AuthController {
     type: AuthResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   async ldapLogin(@Body() loginDto: LoginDto, @Request() req): Promise<AuthResponseDto> {
-    return this.authService.generateAuthResponse(req.user);
+    try {
+      this.logger.debug(`LDAP login attempt for user: ${loginDto.username}`);
+      return this.authService.generateAuthResponse(req.user);
+    } catch (error) {
+      this.logger.error(`LDAP login failed: ${error.message}`);
+      throw new HttpException(
+        { 
+          status: HttpStatus.UNAUTHORIZED, 
+          error: 'Authentication failed', 
+          message: 'Invalid LDAP credentials or configuration' 
+        }, 
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+  }
+
+  @Public()
+  @Post('refresh')
+  @ApiOperation({ summary: 'Refresh access token using a valid refresh token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Access token refreshed successfully',
+    type: TokenRefreshResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  async refreshToken(@Body() refreshDto: TokenRefreshDto): Promise<TokenRefreshResponseDto> {
+    return this.authService.refreshToken(refreshDto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -122,4 +179,4 @@ export class AuthController {
   async testLdapConnection(@Param('id') id: string) {
     return this.ldapService.testConnection(id);
   }
-} 
+}

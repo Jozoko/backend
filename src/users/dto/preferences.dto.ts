@@ -17,7 +17,11 @@ export class UserPreferencesDto {
   @ApiProperty({ description: 'Notifications enabled' })
   notifications: boolean;
 
-  @ApiProperty({ description: 'Additional settings', type: 'object' })
+  @ApiProperty({ 
+    description: 'Additional settings',
+    type: 'object',
+    additionalProperties: true
+  })
   settings: Record<string, any>;
 }
 
@@ -37,7 +41,11 @@ export class UpdatePreferencesDto {
   @IsOptional()
   notifications?: boolean;
 
-  @ApiPropertyOptional({ description: 'Additional settings', type: 'object' })
+  @ApiPropertyOptional({ 
+    description: 'Additional settings',
+    type: 'object',
+    additionalProperties: true
+  })
   @IsObject()
   @IsOptional()
   settings?: Record<string, any>;

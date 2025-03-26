@@ -54,22 +54,22 @@ export class HelperService {
    * Get a nested property safely using a path string
    * Example: getNestedProperty(obj, 'user.address.city')
    */
-  getNestedProperty<T>(obj: any, path: string, defaultValue: T = null): T {
+  getNestedProperty<T>(obj: any, path: string, defaultValue?: T): T {
     try {
       const parts = path.split('.');
       let current = obj;
 
       for (const part of parts) {
         if (current === null || current === undefined) {
-          return defaultValue;
+          return defaultValue as T;
         }
         current = current[part];
       }
 
-      return (current === undefined) ? defaultValue : current;
+      return (current === undefined) ? defaultValue as T : current;
     } catch (error) {
       this.logger.warn(`Failed to get nested property ${path}: ${error.message}`);
-      return defaultValue;
+      return defaultValue as T;
     }
   }
 

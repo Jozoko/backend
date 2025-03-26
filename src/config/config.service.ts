@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere, In, IsNull } from 'typeorm';
 import { ConfigurationKey, ConfigurationDataType } from './entities/configuration-key.entity';
 import { ConfigurationValue } from './entities/configuration-value.entity';
 import { ConfigurationCategory } from './entities/configuration-category.entity';
@@ -42,7 +42,7 @@ export class ConfigService implements OnModuleInit {
       // Add values to cache
       for (const value of values) {
         const key = value.configKey.key;
-        let parsedValue = value.value;
+        let parsedValue: string | number | boolean | object = value.value;
 
         // Convert value based on type
         switch (value.configKey.dataType) {
@@ -54,7 +54,7 @@ export class ConfigService implements OnModuleInit {
             break;
           case ConfigurationDataType.JSON:
             try {
-              parsedValue = JSON.parse(parsedValue);
+              parsedValue = JSON.parse(parsedValue as string);
             } catch (error) {
               this.logger.error(`Failed to parse JSON for key ${key}: ${error.message}`);
             }
@@ -73,14 +73,16 @@ export class ConfigService implements OnModuleInit {
   /**
    * Get a configuration value from the database or environment
    */
-  get<T>(key: string, defaultValue?: T): T {
+  get<T = any>(key: string, defaultValue?: T): T {
     // Check if the key is in the database cache
     if (this.cache.has(key)) {
       return this.cache.get(key) as T;
     }
 
     // Fall back to environment variables if not in database
-    return this.nestConfigService.get<T>(key, defaultValue);
+    // Safely handle the typing by using 'any' as intermediary
+    const result: any = this.nestConfigService.get(key);
+    return result !== undefined ? result : (defaultValue as T);
   }
 
   /**
@@ -125,11 +127,13 @@ export class ConfigService implements OnModuleInit {
     }
 
     // Find existing value for this key and environment
+    const whereCondition: FindOptionsWhere<ConfigurationValue> = {
+      configKey: { id: configKey.id },
+      environmentName: environment || IsNull(),
+    };
+
     let configValue = await this.configValueRepository.findOne({
-      where: {
-        configKeyId: configKey.id,
-        environmentName: environment || null,
-      },
+      where: whereCondition,
     });
 
     if (configValue) {
@@ -137,8 +141,9 @@ export class ConfigService implements OnModuleInit {
       configValue.value = stringValue;
     } else {
       // Create new value
+      // Use relationship approach with objects to satisfy TypeORM
       configValue = this.configValueRepository.create({
-        configKeyId: configKey.id,
+        configKey,
         value: stringValue,
         environmentName: environment,
         isActive: true,
@@ -167,10 +172,10 @@ export class ConfigService implements OnModuleInit {
     return keys.map(key => {
       const value = key.values.find(v => v.isActive && (!v.environmentName || v.environmentName === process.env.NODE_ENV));
       
-      let parsedValue = value?.value;
+      let parsedValue: string | number | boolean | object | null | undefined = value?.value;
       if (parsedValue && key.dataType === ConfigurationDataType.JSON) {
         try {
-          parsedValue = JSON.parse(parsedValue);
+          parsedValue = JSON.parse(parsedValue as string);
         } catch (error) {
           // Use as is if parsing fails
         }
@@ -235,11 +240,13 @@ export class ConfigService implements OnModuleInit {
       return false;
     }
 
+    const whereCondition: FindOptionsWhere<ConfigurationValue> = {
+      configKey: { id: configKey.id },
+      environmentName: environment || IsNull(),
+    };
+
     const configValue = await this.configValueRepository.findOne({
-      where: {
-        configKeyId: configKey.id,
-        environmentName: environment || null,
-      },
+      where: whereCondition,
     });
 
     if (!configValue) {

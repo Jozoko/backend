@@ -44,7 +44,7 @@ export class AuditService {
     } catch (error) {
       this.logger.error(`Failed to create audit log: ${error.message}`);
       // Don't throw error to prevent affecting the main operation
-      return null;
+      return {} as AuditLog;
     }
   }
 
@@ -94,7 +94,7 @@ export class AuditService {
       entityType: data.entityType,
       entityId: data.entityId,
       userId: data.userId,
-      oldValues: null,
+      oldValues: {},
       newValues: data.entityData,
       ipAddress: data.ipAddress,
       userAgent: data.userAgent,
@@ -142,7 +142,7 @@ export class AuditService {
       entityId: data.entityId,
       userId: data.userId,
       oldValues: data.entityData,
-      newValues: null,
+      newValues: {},
       ipAddress: data.ipAddress,
       userAgent: data.userAgent,
     });

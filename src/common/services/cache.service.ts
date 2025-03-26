@@ -14,7 +14,8 @@ export class CacheService {
    */
   async get<T>(key: string): Promise<T | undefined> {
     try {
-      return await this.cacheManager.get<T>(key);
+      const result = await this.cacheManager.get<T>(key);
+      return result === null ? undefined : result;
     } catch (error) {
       this.logger.error(`Failed to get cache key ${key}: ${error.message}`);
       return undefined;
@@ -48,7 +49,18 @@ export class CacheService {
    */
   async clear(): Promise<void> {
     try {
-      await this.cacheManager.reset();
+      // Try to delete all keys but handle gracefully if not supported
+      try {
+        // Different cache manager versions have different ways to reset
+        // Using any here to bypass type checking as we're handling errors anyway
+        if (typeof (this.cacheManager as any).reset === 'function') {
+          await (this.cacheManager as any).reset();
+        } else {
+          this.logger.warn('Cache manager reset method not available');
+        }
+      } catch (error) {
+        this.logger.warn(`Cache reset not fully supported: ${error.message}`);
+      }
     } catch (error) {
       this.logger.error(`Failed to clear cache: ${error.message}`);
     }
@@ -62,7 +74,10 @@ export class CacheService {
       const result: Record<string, T> = {};
       await Promise.all(
         keys.map(async (key) => {
-          result[key] = await this.cacheManager.get<T>(key);
+          const value = await this.cacheManager.get<T>(key);
+          if (value !== null) {
+            result[key] = value;
+          }
         }),
       );
       return result;

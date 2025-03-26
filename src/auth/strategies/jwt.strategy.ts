@@ -8,6 +8,7 @@ interface JwtPayload {
   username: string;
   email: string;
   roles: string[];
+  type?: string;
   iat: number;
   exp: number;
 }
@@ -18,7 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET') || 'SOME-VERY-LONG-SECRET-AND-RANDOM',
     });
   }
 
@@ -27,6 +28,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // The user's existence could be verified from a database here
     if (!payload) {
       throw new UnauthorizedException('Invalid token payload');
+    }
+
+    // Ensure this is an access token, not a refresh token
+    if (payload.type && payload.type !== 'access') {
+      throw new UnauthorizedException('Invalid token type');
     }
 
     return {
