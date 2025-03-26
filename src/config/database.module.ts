@@ -7,10 +7,18 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        ...configService.get('database'),
-      }),
+      useFactory: (configService: ConfigService) => {
+        const dbConfig = configService.get('database');
+        return {
+          ...dbConfig,
+          // Additional options can be added here
+          keepConnectionAlive: true,
+          // Explicitly load all entities to ensure they're registered
+          autoLoadEntities: true,
+        };
+      },
     }),
   ],
+  exports: [TypeOrmModule],
 })
 export class DatabaseModule {} 

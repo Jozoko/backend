@@ -8,7 +8,16 @@ export default registerAs('database', () => ({
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_DATABASE || 'innosecportal',
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: process.env.NODE_ENV !== 'production',
+  synchronize: process.env.DB_SYNCHRONIZE === 'true',
   logging: process.env.DB_LOGGING === 'true',
-  ssl: process.env.DB_SSL === 'true',
+  ssl: process.env.DB_SSL === 'true' 
+    ? {
+        rejectUnauthorized: false, // Use this only for development. In production, use proper CA certificates
+      } 
+    : false,
+  autoLoadEntities: true,
+  // Migrations configuration (will be used later)
+  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+  migrationsTableName: 'typeorm_migrations',
+  migrationsRun: false,
 })); 

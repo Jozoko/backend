@@ -6,6 +6,12 @@ import { DatabaseModule } from './config/database.module';
 import { LoggingModule } from './config/logging.module';
 import { RedisModule } from './config/redis.module';
 import { DatabaseConfigModule } from './config/database-config.module';
+import { CommonModule } from './common/common.module';
+import { TasksModule } from './tasks/tasks.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { RolesModule } from './roles/roles.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -15,6 +21,14 @@ import { DatabaseConfigModule } from './config/database-config.module';
     DatabaseModule,
     RedisModule,
     DatabaseConfigModule,
+    
+    // Application modules
+    CommonModule,
+    TasksModule,
+    AuthModule,
+    UsersModule,
+    RolesModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
